@@ -1,8 +1,9 @@
 # Digital PLL verification testbench
 
-I built a digital PLL control block because I wanted a practical way to check how a clock controller responds when its reference and feedback signals drift apart. A phase-locked loop (PLL) tries to keep a feedback signal aligned with a reference. This project models its digital decision-making and checks that the decisions stay consistent across many input patterns.
+I built a small circuit and a testbench because I wanted to see whether a timing signal stays in step with another one. When the signals drift apart, the circuit notices and changes a control value; the testbench checks its decisions automatically. I can run the checks on my computer with the commands below and see whether a change breaks them.
 
-The block counts clock cycles to make a divided feedback pulse, compares it with the reference pulse, and adjusts a small control counter. It reports lock after four aligned pulses and drops lock when the pulses disagree. A Python testbench drives inputs, watches outputs and compares each cycle with an independent model. I also run the same test against an intentionally faulty divider to show that the checker catches a real error.
+The circuit models the digital part of a phase-locked loop, a system that tries to keep two repeating signals aligned. One signal is the target timing, called the reference. The other is a slower pulse made from a clock, called feedback. My testbench compares the circuit's outputs with a separate Python model. It also tries a deliberately faulty version to show that the checker catches a mistake.
+
 
 ## Try it
 
