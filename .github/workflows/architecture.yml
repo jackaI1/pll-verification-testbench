@@ -19,10 +19,13 @@ jobs:
           version: '2026-11-06'
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install small Linux tools
+        timeout-minutes: 5
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf tcl-dev swig bison flex libfl-dev libeigen3-dev
-          python -m pip install -r requirements.txt
+          # The hosted runner's Azure mirror can stall on the cross compiler.
+          echo 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=2 -o Acquire::https::Timeout=30 install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf tcl-dev swig bison flex libfl-dev libeigen3-dev
+          python -m pip install --timeout 30 --retries 2 -r requirements.txt
       - name: Unit, scoreboard and integration regression
         run: |
           mkdir -p build
