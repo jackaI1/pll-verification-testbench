@@ -36,6 +36,7 @@ synth -top rv32_core -noabc
 dfflibmap -liberty {liberty}
 abc -liberty {liberty}
 clean
+read_liberty -lib {liberty}
 check -assert
 stat -liberty {liberty}
 write_verilog -noattr -noexpr {netlist}

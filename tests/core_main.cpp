@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
             std::cout << "CORE cycles=" << std::dec << cycle << " retired=" << retired
                 << " stalls=" << stalls << " flushes=" << flushes << " forwards=" << forwards
                 << " test_number=" << dut.test_number << "\n";
-            return dut.test_number == 1 ? 0 : 1;
+            return dut.test_number == 1 && dut.retire_insn == 0x73 ? 0 : 1;
         }
     }
     std::cerr << "Processor timed out\n";

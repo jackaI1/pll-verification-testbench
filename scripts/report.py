@@ -28,10 +28,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=Path('build/report.json'))
     args = parser.parse_args()
+    args.output = args.output.resolve()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     log_path = args.output.with_suffix('.log')
     with log_path.open('w') as log:
         result = subprocess.run([sys.executable, '-m', 'pytest', '-s', '-q',
+                                 '--basetemp', str(args.output.parent / (args.output.stem+'-simulation')),
                                  str(ROOT / 'tests/test_regression.py'), str(ROOT / 'tests/test_fifo.py')],
                                 cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=False)
     content = log_path.read_text()

@@ -54,22 +54,35 @@ def run_suite(output):
     names = body.replace('\\', '').split()
     assert len(names) >= 38, 'Upstream manifest is unexpectedly short'
     executable = build_core(output/'sim')
+    # The first upstream misalignment test uses TESTNUM=1. Prove that its
+    # failure macro cannot be mistaken for the normal gp=1 success signal.
+    negative=output/'adapter-failure.S'
+    negative.write_text('#include "riscv_test.h"\nRVTEST_CODE_BEGIN\nli gp,1; RVTEST_FAIL\n')
     results = []
-    for name in names:
+    negative_caught=False
+    for name in ['adapter-failure']+names:
         elf, binary = output/f'{name}.elf', output/f'{name}.bin'
         cmd = ['riscv64-unknown-elf-gcc', '-march=rv32i_zifencei', '-mabi=ilp32',
                '-nostdlib', '-nostartfiles', '-Wl,--no-relax',
                '-T', str(ROOT/'tests/programs/link.ld'), '-I', str(ROOT/'tests/programs'),
-               '-I', str(vendor/'isa/macros/scalar'), str(vendor/f'isa/rv32ui/{name}.S'), '-o', str(elf)]
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+               '-I', str(vendor/'isa/macros/scalar'),
+               str(negative if name=='adapter-failure' else vendor/f'isa/rv32ui/{name}.S'), '-o', str(elf)]
+        compiled=subprocess.run(cmd, capture_output=True, text=True)
+        (output/f'{name}-compile.log').write_text(compiled.stdout+compiled.stderr)
+        if compiled.returncode:
+            raise RuntimeError(f'{name} assembly failed:\n{compiled.stderr[-3000:]}')
         subprocess.run(['riscv64-unknown-elf-objcopy', '-O', 'binary', str(elf), str(binary)], check=True)
         proc = subprocess.run([str(executable), str(binary), str(output/f'{name}.trace')],
                               capture_output=True, text=True, timeout=30)
         (output/f'{name}.log').write_text(proc.stdout+proc.stderr)
         counts = {k: int(v) for k,v in re.findall(r'(\w+)=(\d+)', proc.stdout)}
+        if name=='adapter-failure':
+            negative_caught=proc.returncode==1 and counts.get('test_number')==3
+            if not negative_caught: raise RuntimeError('The upstream test failure adapter did not reject TESTNUM=1')
+            continue
         results.append({'name': name, 'passed': proc.returncode == 0, **counts})
         print(f'{name}: {"PASS" if proc.returncode == 0 else "FAIL"} {proc.stdout.strip()}')
-    report = {'revision': REVISION, 'total': len(results),
+    report = {'revision': REVISION, 'negative_control_caught':negative_caught, 'total': len(results),
               'passed': sum(r['passed'] for r in results), 'tests': results}
     (output/'summary.json').write_text(json.dumps(report, indent=2)+'\n')
     if report['passed'] != report['total']:
