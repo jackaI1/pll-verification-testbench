@@ -62,9 +62,7 @@ def run_suite(output):
     negative_caught=False
     for name in ['adapter-failure']+names:
         elf, binary = output/f'{name}.elf', output/f'{name}.bin'
-        # Ubuntu 22.04's GCC 10 / binutils 2.35 use the older base-ISA
-        # spelling, which still includes FENCE.I. Newer GCC names it Zifencei.
-        cmd = ['riscv64-unknown-elf-gcc', '-march=rv32i', '-mabi=ilp32',
+        cmd = ['riscv64-unknown-elf-gcc', '-march=rv32i_zifencei', '-mabi=ilp32',
                '-nostdlib', '-nostartfiles', '-Wl,--no-relax',
                '-T', str(ROOT/'tests/programs/link.ld'), '-I', str(ROOT/'tests/programs'),
                '-I', str(vendor/'isa/macros/scalar'),

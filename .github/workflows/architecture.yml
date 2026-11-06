@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   architecture:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
       - name: Install small Linux tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf opensta
+          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf tcl-dev swig bison flex libeigen3-dev
           python -m pip install -r requirements.txt
       - name: Unit, scoreboard and integration regression
         run: |
@@ -34,8 +34,24 @@ jobs:
       - name: Bounded checks, induction, cover and seeded fault
         if: ${{ !cancelled() }}
         run: python scripts/formal.py
+      - uses: actions/cache/restore@v4
+        if: ${{ !cancelled() }}
+        id: sta-cache
+        with:
+          path: build/tools/sta
+          key: opensta-ubuntu24-f8e13cbf12d02a07-v1
+      - name: Build pinned OpenSTA
+        if: ${{ !cancelled() && steps.sta-cache.outputs.cache-hit != 'true' }}
+        run: bash scripts/build_opensta.sh
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.sta-cache.outputs.cache-hit != 'true' }}
+        with:
+          path: build/tools/sta
+          key: opensta-ubuntu24-f8e13cbf12d02a07-v1
       - name: Sky130 mapping and OpenSTA comparison
         if: ${{ !cancelled() }}
+        env:
+          OPENSTA: ${{ github.workspace }}/build/tools/sta
         run: python scripts/timing.py
       - uses: actions/upload-artifact@v4
         if: always()
@@ -52,3 +68,4 @@ jobs:
             build/timing/summary.json
             build/timing/*-opensta.txt
             build/timing/*-yosys.log
+            build/opensta-build.log
