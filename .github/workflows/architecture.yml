@@ -1,0 +1,74 @@
+name: Processor, formal and timing
+on: [push, workflow_dispatch]
+concurrency:
+  group: architecture-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  architecture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: YosysHQ/setup-oss-cad-suite@v4
+        with:
+          version: '2026-11-06'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install small Linux tools
+        timeout-minutes: 5
+        run: |
+          # The hosted runner's Azure mirror can stall on the cross compiler.
+          echo 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=2 -o Acquire::https::Timeout=30 install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf tcl-dev swig bison flex libfl-dev libeigen3-dev
+          python -m pip install --timeout 30 --retries 2 -r requirements.txt
+      - name: Unit, scoreboard and integration regression
+        run: |
+          mkdir -p build
+          python -m pytest -q --basetemp=build/pytest
+      - name: Simulation and functional coverage report
+        run: python scripts/report.py
+      - name: Public riscv-tests instruction suite
+        run: python scripts/riscv_suite.py
+      - name: Bounded checks, induction, cover and seeded fault
+        if: ${{ !cancelled() }}
+        run: python scripts/formal.py
+      - uses: actions/cache/restore@v4
+        if: ${{ !cancelled() }}
+        id: sta-cache
+        with:
+          path: build/tools/sta
+          key: opensta-ubuntu24-f8e13cbf12d02a07-v1
+      - name: Build pinned OpenSTA
+        if: ${{ !cancelled() && steps.sta-cache.outputs.cache-hit != 'true' }}
+        run: bash scripts/build_opensta.sh
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.sta-cache.outputs.cache-hit != 'true' }}
+        with:
+          path: build/tools/sta
+          key: opensta-ubuntu24-f8e13cbf12d02a07-v1
+      - name: Sky130 mapping and OpenSTA comparison
+        if: ${{ !cancelled() }}
+        env:
+          OPENSTA: ${{ github.workspace }}/build/tools/sta
+        run: python scripts/timing.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-evidence
+          path: |
+            build/report.*
+            build/riscv-tests/summary.json
+            build/riscv-tests/*.log
+            build/formal/*.log
+            build/formal/summary.json
+            build/formal/**/status
+            build/formal/**/trace*
+            build/timing/summary.json
+            build/timing/*-opensta.txt
+            build/timing/*-yosys.log
+            build/opensta-build.log

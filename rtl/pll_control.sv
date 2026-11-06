@@ -9,6 +9,11 @@ module pll_control #(parameter integer INJECT_BUG = 0) (
     logic [2:0] stable;
     wire [3:0] limit = (ratio < 2) ? 4'd2 : ratio;
     wire tick = (div_count == limit - (INJECT_BUG != 0 ? 4'd2 : 4'd1));
+    // The phase detector must never request both directions at once.
+`ifndef SYNTHESIS
+    assert property (@(posedge clk) disable iff (reset) !(up && down));
+`endif
+
     always_ff @(posedge clk) begin
         if (reset) begin
             div_count <= 0; feedback <= 0; up <= 0; down <= 0;

@@ -1,13 +1,12 @@
-# Digital PLL verification testbench
+# Programmable digital PLL testbench
 
-I built a small circuit and a testbench because I wanted to see whether a timing signal stays in step with another one. When the signals drift apart, the circuit notices and changes a control value; the testbench checks its decisions automatically. I can run the checks on my computer with the commands below and see whether a change breaks them.
+I built a programmable timing circuit checker because I wanted to learn how a small program could control a circuit and check its results. The circuit compares two repeating signals and adjusts a control value when they drift apart. A small processor changes its settings, and a queue holds the results until the program reads them.
 
-The circuit models the digital part of a phase-locked loop, a system that tries to keep two repeating signals aligned. One signal is the target timing, called the reference. The other is a slower pulse made from a clock, called feedback. My testbench compares the circuit's outputs with a separate Python model. It also tries a deliberately faulty version to show that the checker catches a mistake.
-
+I can run the checks below to see whether a circuit change loses a sample, makes a wrong calculation, or takes the wrong instruction after a branch. The checks compare the hardware with separate Python models. They also try deliberate faults so I can tell whether the checkers catch mistakes.
 
 ## Try it
 
-Install Python 3.10 or newer, Verilator 5.036 or newer, Yosys and a C++ compiler. On macOS with Homebrew:
+I use Python 3.10 or newer, Verilator 5.036 or newer, Yosys and a C++ compiler. On macOS:
 
 ```sh
 brew install verilator yosys
@@ -15,19 +14,38 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python -m pytest -q
+python scripts/report.py
 yosys -c scripts/synth.tcl
 ```
 
-The two pytest cases run the correct design and the injected fault. The fault case passes only when the scoreboard identifies the expected divider mismatch. The Tcl script synthesizes the circuit, checks for structural problems and rejects an empty or unexpectedly large cell count.
+The report at `build/report.json` gives a pass/fail result and counts the required coverage cases. A failing simulation, missing case, duplicate result or missing random seed makes the report fail. Compiler output stays in `build/report.log`.
 
-## How it works
+The Linux checks also run automatically in [GitHub Actions](https://github.com/jackaI1/pll-verification-testbench/actions). Each architecture run provides a downloadable `verification-evidence` artifact containing instruction-test results, formal counterexamples and timing reports. I do not need a container or a virtual machine to run the local checks.
 
-`rtl/pll_control.sv` contains the synchronous phase-frequency comparison, saturating loop-filter counter, divider and lock detector. The divider accepts ratios from 2 to 15; inputs below 2 use 2. Reset before changing the ratio. A feedback pulse occurs once per ratio clock cycles. Four consecutive coincident reference and feedback pulses assert lock; any unmatched pulse clears it.
+## What the program controls
 
-The pyuvm environment in `tests/pll_env.py` has a driver, monitor and scoreboard. Its cycle-by-cycle Python reference model checks the feedback pulse, phase decisions, control count and lock state. A fixed random seed makes the constrained input patterns repeatable. Coverage bins require ratios 2 through 8, both phase-error directions, no error and lock. Directed checks exercise lock acquisition and loss. `INJECT_BUG` changes the divider terminal count only in the fault build.
+The phase-locked loop (PLL) model compares a reference pulse with a divided clock pulse. Its digital controller raises or lowers a four-bit value, and marks the signals as locked after four matching pulses. It models the digital decisions, rather than an analog oscillator or real clock jitter.
 
-This is a digital control model, not a complete physical PLL: it does not model an analog oscillator, jitter or frequency response, and the control counter does not feed back into a physical clock. Both the reference and feedback are sampled on the same clock.
+The processor can change the divider, hold the PLL in reset and capture status words. A first-in, first-out queue (FIFO) preserves the order of those words. My integration test runs firmware that sweeps divider ratios 2 through 8, captures three samples at each setting and reads all 21 samples back into memory. A Python PLL model checks the status values and the test checks every copied sample.
 
-## Automated checks
+## Circuit and processor design
 
-GitHub Actions runs both simulation cases and the Tcl-driven Yosys synthesis and structural check on every push and pull request. The simulation requires all 11 functional coverage bins; the synthesis script checks that the mapped design has between 1 and 1000 cells.
+`rtl/sample_fifo.sv` is a parameterized sample queue. I test depths 1, 3 and 8 with three repeatable random seeds. A Python queue is the reference; seven required cases cover empty reads, full writes, simultaneous reads and writes, pointer wraparound, empty/full states and reset with queued data. SystemVerilog assertions check occupancy, pointer bounds and rejected operations.
+
+`rtl/rv32_core.sv` implements the RV32I integer instructions in five stages: fetch, decode, execute, memory and writeback. Forwarding sends a result straight to the next instruction that needs it. A one-cycle stall handles a load dependency, and a taken branch discards younger instructions. Both the original ripple-carry adder and the carry-select version run against the same Python instruction model.
+
+The public `riscv-tests` RV32UI instruction suite runs in Verilator using a small bare-metal adapter. The upstream instruction bodies stay unchanged, including the misaligned-data and instruction-fence tests. This is an educational bare-metal core: it has no interrupts, privileged mode, cache, bus wait states or operating-system support. Its memory adapter supplies a four-byte window starting at the requested byte address, including unaligned addresses. See [the design notes](docs/design.md) for ports, memory addresses and reproduction commands.
+
+## Formal checks and timing
+
+SymbiYosys explores arbitrary instruction and memory inputs to check x0, program-counter updates, pipeline flushes, load stalls and forwarding priority. CI runs bounded checking, induction and reachability checks. A deliberately broken flush must fail with a replayable counterexample. These are local pipeline properties, not a formal proof of every instruction or full RISC-V compliance.
+
+I retain `FAST_ALU=0` as the original serial-carry timing baseline. `FAST_ALU=1` uses four-bit carry-select groups, calculating both possible carry inputs before selecting a result. CI maps both complete cores to the same Sky130 standard cells with Yosys, then measures their longest constrained paths with OpenSTA. The comparison uses identical clock, input, output and load constraints and fails unless the measured path gets shorter. This is cell-based timing before placement, with no extracted wire delays. I measured 21.0994 ns before and 19.5514 ns after, a 7.34% reduction in the longest constrained path. The original paths and conditions are in [the measured reports](docs/evidence/).
+
+## Regression details
+
+The recorded CI run passed 32 pytest cases, all 42 public instruction programs, bounded formal checking, induction and reachability. The deliberate flush bug failed at step 5 as expected.
+
+The existing PLL driver, monitor and scoreboard use cocotb and pyuvm. They check the correct controller and a deliberately faulty divider and require all 11 PLL coverage bins. The new FIFO regression requires all seven cases in each of nine depth/seed runs. Processor tests compare retired instructions with a sequential model for three seeds on both adder versions. GitHub Actions runs the full checks on every push; simulation and synthesis also run on pull requests. Generated reports are artifacts rather than hand-written pass flags.
+
+The project is [MIT licensed](LICENSE). Downloaded upstream tests retain their own license. Sources and limits are documented in [docs/design.md](docs/design.md).
