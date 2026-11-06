@@ -1,0 +1,47 @@
+name: Processor, formal and timing
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  architecture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: YosysHQ/setup-oss-cad-suite@v4
+        with:
+          version: '2026-11-06'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install small Linux tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf opensta
+          python -m pip install -r requirements.txt
+      - name: Unit, scoreboard and integration regression
+        run: python -m pytest -q --basetemp=build/pytest
+      - name: Simulation and functional coverage report
+        run: python scripts/report.py
+      - name: Public riscv-tests instruction suite
+        run: python scripts/riscv_suite.py
+      - name: Bounded checks, induction, cover and seeded fault
+        run: python scripts/formal.py
+      - name: Sky130 mapping and OpenSTA comparison
+        run: python scripts/timing.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-evidence
+          path: |
+            build/report.*
+            build/riscv-tests/summary.json
+            build/riscv-tests/*.log
+            build/formal/*.log
+            build/formal/summary.json
+            build/formal/**/status
+            build/formal/**/trace*
+            build/timing/summary.json
+            build/timing/*-opensta.txt
+            build/timing/*-yosys.log
