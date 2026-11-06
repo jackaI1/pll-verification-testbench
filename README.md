@@ -40,9 +40,11 @@ The public `riscv-tests` RV32UI instruction suite runs in Verilator using a smal
 
 SymbiYosys explores arbitrary instruction and memory inputs to check x0, program-counter updates, pipeline flushes, load stalls and forwarding priority. CI runs bounded checking, induction and reachability checks. A deliberately broken flush must fail with a replayable counterexample. These are local pipeline properties, not a formal proof of every instruction or full RISC-V compliance.
 
-I retain `FAST_ALU=0` as the original serial-carry timing baseline. `FAST_ALU=1` uses four-bit carry-select groups, calculating both possible carry inputs before selecting a result. CI maps both complete cores to the same Sky130 standard cells with Yosys, then measures their longest constrained paths with OpenSTA. The comparison uses identical clock, input, output and load constraints and fails unless the measured path gets shorter. This is cell-based timing before placement, with no extracted wire delays. [Measured reports](docs/evidence/) record the actual before and after result.
+I retain `FAST_ALU=0` as the original serial-carry timing baseline. `FAST_ALU=1` uses four-bit carry-select groups, calculating both possible carry inputs before selecting a result. CI maps both complete cores to the same Sky130 standard cells with Yosys, then measures their longest constrained paths with OpenSTA. The comparison uses identical clock, input, output and load constraints and fails unless the measured path gets shorter. This is cell-based timing before placement, with no extracted wire delays. I measured 21.0994 ns before and 19.5514 ns after, a 7.34% reduction in the longest constrained path. The original paths and conditions are in [the measured reports](docs/evidence/).
 
 ## Regression details
+
+The recorded CI run passed 32 pytest cases, all 42 public instruction programs, bounded formal checking, induction and reachability. The deliberate flush bug failed at step 5 as expected.
 
 The existing PLL driver, monitor and scoreboard use cocotb and pyuvm. They check the correct controller and a deliberately faulty divider and require all 11 PLL coverage bins. The new FIFO regression requires all seven cases in each of nine depth/seed runs. Processor tests compare retired instructions with a sequential model for three seeds on both adder versions. GitHub Actions runs the full checks on every push; simulation and synthesis also run on pull requests. Generated reports are artifacts rather than hand-written pass flags.
 
