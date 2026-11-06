@@ -12,7 +12,9 @@ LIB_PATH='flow/platforms/sky130hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib'
 
 
 def arrival(report):
-    values=re.findall(r'([0-9]+\.[0-9]+)\s+data arrival time', report)
+    # The slack calculation repeats the arrival as a negative subtraction.
+    # Only the positive standalone path row is the measured arrival.
+    values=re.findall(r'^\s*([0-9]+\.[0-9]+)\s+data arrival time\s*$', report, re.MULTILINE)
     if len(values)!=1:
         raise ValueError('Expected exactly one constrained maximum-delay path')
     value=float(values[0])

@@ -5,11 +5,16 @@ yosys proc
 yosys check -assert
 yosys synth -top pll_control
 yosys check -assert
-yosys tee -o /tmp/pll-yosys-stat.json stat -json
-set f [open /tmp/pll-yosys-stat.json r]
-set report [read $f]
-close $f
-file delete /tmp/pll-yosys-stat.json
+set stat_channel [file tempfile stat_path]
+close $stat_channel
+try {
+    yosys tee -o $stat_path stat -json
+    set f [open $stat_path r]
+    set report [read $f]
+    close $f
+} finally {
+    file delete -force $stat_path
+}
 if {![regexp {"num_cells"\s*:\s*([0-9]+)} $report -> cells]} { error "No cell count in Yosys report" }
 if {$cells < 1 || $cells > 1000} { error "Unexpected synthesized cell count: $cells" }
 puts "Checked synthesized cell count: $cells"

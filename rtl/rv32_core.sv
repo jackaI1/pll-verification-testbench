@@ -1,5 +1,5 @@
 // Five stages, combinational instruction and byte-window data memory ports.
-// FAST_ALU selects an eight-bit carry-select adder; 0 retains the timing baseline.
+// FAST_ALU selects a four-bit carry-select adder; 0 retains the timing baseline.
 module rv32_core #(parameter integer FAST_ALU=1, FLUSH_BUG=0) (
     input wire clk, reset,
     output wire [31:0] imem_addr,
@@ -46,16 +46,16 @@ module rv32_core #(parameter integer FAST_ALU=1, FLUSH_BUG=0) (
     function automatic [31:0] add32(input [31:0] lhs, rhs, input sub);
         reg [31:0] y, sum;
         reg [32:0] carry;
-        reg [8:0] z0, z1;
+        reg [4:0] z0, z1;
         integer k;
         begin
             y = rhs ^ {32{sub}};
             carry = 0; carry[0] = sub; sum = 0;
             if (FAST_ALU != 0) begin
-                for (k=0; k<4; k=k+1) begin
-                    z0 = {1'b0,lhs[k*8+:8]} + {1'b0,y[k*8+:8]};
-                    z1 = {1'b0,lhs[k*8+:8]} + {1'b0,y[k*8+:8]} + 9'd1;
-                    {carry[(k+1)*8],sum[k*8+:8]} = carry[k*8] ? z1 : z0;
+                for (k=0; k<8; k=k+1) begin
+                    z0 = {1'b0,lhs[k*4+:4]} + {1'b0,y[k*4+:4]};
+                    z1 = {1'b0,lhs[k*4+:4]} + {1'b0,y[k*4+:4]} + 5'd1;
+                    {carry[(k+1)*4],sum[k*4+:4]} = carry[k*4] ? z1 : z0;
                 end
             end else begin
                 for (k=0; k<32; k=k+1) begin
