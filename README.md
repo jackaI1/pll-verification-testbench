@@ -6,17 +6,19 @@ I can run the checks below to see whether a circuit change loses a sample, makes
 
 ## Try it
 
-I use Python 3.10 or newer, Verilator 5.036 or newer, Yosys and a C++ compiler. On macOS:
+I use Python 3.10 through 3.14, Verilator 5.036 or newer, Yosys and a C++ compiler. On macOS:
 
 ```sh
-brew install verilator yosys
-python3 -m venv .venv
+brew install python@3.14 verilator yosys
+python3.14 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python -m pytest -q
 python scripts/report.py
 yosys -c scripts/synth.tcl
 ```
+
+I use a supported Python version explicitly because the newest system Python can be ahead of cocotb support. Activating the environment also lets Verilator find the same interpreter.
 
 The report at `build/report.json` gives a pass/fail result and counts the required coverage cases. A failing simulation, missing case, duplicate result or missing random seed makes the report fail. Compiler output stays in `build/report.log`.
 
