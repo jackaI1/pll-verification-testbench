@@ -1,6 +1,6 @@
 # Programmable digital PLL testbench
 
-I built a programmable timing-circuit testbench because I wanted to learn how a small program could control a circuit and check its results. The circuit compares two repeating signals and adjusts a control value when they drift apart. A small processor changes its settings, and a queue holds the results until the program reads them.
+I built a programmable timing circuit checker because I wanted to learn how a small program could control a circuit and check its results. The circuit compares two repeating signals and adjusts a control value when they drift apart. A small processor changes its settings, and a queue holds the results until the program reads them.
 
 I can run the checks below to see whether a circuit change loses a sample, makes a wrong calculation, or takes the wrong instruction after a branch. The checks compare the hardware with separate Python models. They also try deliberate faults so I can tell whether the checkers catch mistakes.
 

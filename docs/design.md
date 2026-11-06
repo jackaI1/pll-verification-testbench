@@ -63,10 +63,14 @@ Cover statements require a redirect with a younger instruction, a load-use hazar
 ## Static timing experiment
 
 ```sh
-python scripts/timing.py
+sudo apt-get install tcl-dev swig bison flex libeigen3-dev
+bash scripts/build_opensta.sh
+OPENSTA="$PWD/build/tools/sta" python scripts/timing.py
 ```
 
-Install OpenSTA (`apt-get install opensta`) along with Yosys. The script downloads only the typical Sky130 HD Liberty file from [OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) commit `c5310d7ffdd5f8a1eed83089697631548cc08a99`, records its SHA-256, maps both full cores, and runs identical constraints: 100 ns clock, 1 ns input/output delays, 0.1 ns input transition and 0.05 pF output load. Reset is excluded from functional data paths. The before/after reports name the startpoint, endpoint and individual timing arcs. The JSON records the worst constrained data arrival time and percentage reduction.
+These build commands target Ubuntu 24.04 with a C++ compiler, CMake and Yosys installed. `scripts/build_opensta.sh` builds OpenSTA commit `f8e13cbf12d02a07a2d1ec4a64f3e6985b747eab` with CUDD commit `f54f533303640afd5dbe47a05ebeabb3066f2a25`. CI caches the executable. Distribution packages can be too old for current netlists and report commands. A modern system OpenSTA also works with `python scripts/timing.py` directly.
+
+The timing script downloads only the typical Sky130 HD Liberty file from [OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) commit `c5310d7ffdd5f8a1eed83089697631548cc08a99`, records its SHA-256, maps both full cores, and runs identical constraints: 100 ns clock, 1 ns input/output delays, 0.1 ns input transition and 0.05 pF output load. Reset is excluded from functional data paths. The before/after reports name the startpoint, endpoint and individual timing arcs. The JSON records the worst constrained data arrival time and percentage reduction.
 
 The baseline explicitly ripples carry across 32 bits. The revised adder computes two possible sums per eight-bit group in parallel, then selects with the preceding carry. Both add and subtract, effective addresses and JALR use it. Both versions run the same Python model regression. Timing is pre-layout, typical-corner cell delay with pin capacitance only. It does not predict board speed, routed silicon timing or a maximum frequency across process/voltage/temperature corners. The baseline remains selectable so CI can repeat the experiment rather than comparing a new report with an unverifiable number.
 

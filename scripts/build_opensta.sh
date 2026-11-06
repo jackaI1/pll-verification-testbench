@@ -19,6 +19,7 @@ trap 'code=$?; if [ "$code" -ne 0 ]; then tail -60 "$task_log"; fi' EXIT
   git fetch --depth 1 origin f8e13cbf12d02a07a2d1ec4a64f3e6985b747eab
   git checkout --detach FETCH_HEAD
   cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTS=OFF -DUSE_TCL_READLINE=OFF \
     -DCUDD_DIR="$task_root/cudd-f54f533303640afd5dbe47a05ebeabb3066f2a25" \
     -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF
   cmake --build build -j4

@@ -69,6 +69,7 @@ exit
                     'clock_period_ns':100,'input_delay_ns':1,'output_delay_ns':1,
                     'output_load_pf':0.05,'input_transition_ns':0.1,
                     'parasitics':'cell pins only; no placement or extracted wire delays',
+                    'opensta':subprocess.check_output([os.environ.get('OPENSTA','sta'),'-version'],text=True).strip(),
                     'yosys':subprocess.check_output(['yosys','-V'],text=True).strip()})
     (output/'summary.json').write_text(json.dumps(numbers,indent=2)+'\n')
     print(json.dumps(numbers,indent=2))
