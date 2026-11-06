@@ -1,10 +1,13 @@
 name: Processor, formal and timing
-on: [push, pull_request, workflow_dispatch]
+on: [push, workflow_dispatch]
+concurrency:
+  group: architecture-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   architecture:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -29,8 +32,10 @@ jobs:
       - name: Public riscv-tests instruction suite
         run: python scripts/riscv_suite.py
       - name: Bounded checks, induction, cover and seeded fault
+        if: ${{ !cancelled() }}
         run: python scripts/formal.py
       - name: Sky130 mapping and OpenSTA comparison
+        if: ${{ !cancelled() }}
         run: python scripts/timing.py
       - uses: actions/upload-artifact@v4
         if: always()
