@@ -4,7 +4,8 @@ set -euo pipefail
 mkdir -p build/tools build/tool-src
 task_root="$(pwd)/build/tool-src"
 task_log="$(pwd)/build/opensta-build.log"
-trap 'code=$?; if [ "$code" -ne 0 ]; then tail -60 "$task_log"; fi' EXIT
+exec 3>&1
+trap 'code=$?; if [ "$code" -ne 0 ]; then tail -60 "$task_log" >&3; fi' EXIT
 {
   curl --fail --location --silent --show-error \
     https://codeload.github.com/ivmai/cudd/tar.gz/f54f533303640afd5dbe47a05ebeabb3066f2a25 \

@@ -63,7 +63,7 @@ Cover statements require a redirect with a younger instruction, a load-use hazar
 ## Static timing experiment
 
 ```sh
-sudo apt-get install tcl-dev swig bison flex libeigen3-dev
+sudo apt-get install tcl-dev swig bison flex libfl-dev libeigen3-dev
 bash scripts/build_opensta.sh
 OPENSTA="$PWD/build/tools/sta" python scripts/timing.py
 ```
