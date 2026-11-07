@@ -20,7 +20,7 @@ yosys -c scripts/synth.tcl
 
 I use a supported Python version explicitly because the newest system Python can be ahead of cocotb support. Activating the environment also lets Verilator find the same interpreter.
 
-The report at `build/report.json` gives a pass/fail result and counts the required coverage cases. A failing simulation, missing case, duplicate result or missing random seed makes the report fail. Compiler output stays in `build/report.log`.
+The report at `build/report.json` gives a pass/fail result and counts the required coverage cases. A failing simulation, missing case, duplicate or malformed result, or missing random seed makes the report fail. Compiler output stays in `build/report.log`.
 
 The Linux checks also run automatically in [GitHub Actions](https://github.com/jackaI1/pll-verification-testbench/actions). Each architecture run provides a downloadable `verification-evidence` artifact containing instruction-test results, formal counterexamples and timing reports. I do not need a container or a virtual machine to run the local checks.
 
@@ -48,6 +48,6 @@ I retain `FAST_ALU=0` as the original serial-carry timing baseline. `FAST_ALU=1`
 
 The recorded CI run passed 32 pytest cases, all 42 public instruction programs, bounded formal checking, induction and reachability. The deliberate flush bug failed at step 5 as expected.
 
-The existing PLL driver, monitor and scoreboard use cocotb and pyuvm. They check the correct controller and a deliberately faulty divider and require all 11 PLL coverage bins. The new FIFO regression requires all seven cases in each of nine depth/seed runs. Processor tests compare retired instructions with a sequential model for three seeds on both adder versions. GitHub Actions runs the full checks on every push; simulation and synthesis also run on pull requests. Generated reports are artifacts rather than hand-written pass flags.
+The existing PLL driver, monitor and scoreboard use cocotb and pyuvm. They check the correct controller and a deliberately faulty divider and require all 11 PLL coverage bins. The new FIFO regression requires all seven cases in each of nine depth/seed runs. Processor tests compare retired instructions with a sequential model for three seeds on both adder versions. GitHub Actions runs the full checks on every push and pull request. Generated reports are artifacts rather than hand-written pass flags.
 
 The project is [MIT licensed](LICENSE). Downloaded upstream tests retain their own license. Sources and limits are documented in [docs/design.md](docs/design.md).

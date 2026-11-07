@@ -26,3 +26,7 @@ def test_failed_or_missing_coverage_never_passes():
     COMPLETE.replace('seed=17','seed=18',1), COMPLETE+'Coverage: 11/11 required bins\n'])
 def test_incomplete_duplicate_or_wrong_seed_coverage_fails(log):
     assert summarize(log,0)['status']=='fail'
+
+
+def test_malformed_extra_fifo_record_cannot_hide_in_a_passing_log():
+    assert summarize(COMPLETE + 'FIFO_COVERAGE depth=8 seed=17 hit=7\n', 0)['status'] == 'fail'
