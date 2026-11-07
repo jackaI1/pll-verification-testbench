@@ -15,7 +15,9 @@ def summarize(log: str, returncode: int) -> dict:
     records = re.findall(r'FIFO_COVERAGE depth=(\d+) seed=(\d+) hit=(\d+) total=(\d+)', log)
     expected = {(d,s) for d in [1,3,8] for s in [17,409,20261106]}
     observed = {(int(d),int(s)) for d,s,_,_ in records}
-    fifo_ok = observed == expected and len(records)==len(expected) and all(
+    # Reject malformed or truncated coverage records as well as duplicates.
+    record_lines = sum(line.startswith('FIFO_COVERAGE') for line in log.splitlines())
+    fifo_ok = record_lines == len(records) and observed == expected and len(records)==len(expected) and all(
         int(h)==7 and int(t)==7 for _,_,h,t in records)
     pll_ok = len(matches)==1 and (hit,total)==(11,11)
     return {'status': 'pass' if returncode == 0 and pll_ok and fifo_ok else 'fail',
